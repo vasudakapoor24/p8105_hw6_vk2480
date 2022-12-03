@@ -14,3 +14,91 @@ Library calls
 ```{r}
 library(tidyverse)
 ```
+
+# Problem 1
+
+# Problem 2
+```{r}
+# DATA CLEANING
+# load data and clean names
+homicide_df = read_csv("homicide-data.csv") %>%
+  janitor::clean_names()
+
+#Create a city_state variable (e.g. “Baltimore, MD”), and a binary variable indicating whether the homicide is solved.
+         
+homicide_df = homicide_df %>%
+  mutate(
+    city_state = str_c(city, ", ",state),
+    case_status = if_else( disposition == "Closed without arrest" | disposition == "Open/No arrest", "Unsolved", "Solved"), 
+    case_status = as.numeric(case_status == "Solved")
+  )
+
+# Omit cities Dallas, TX; Phoenix, AZ; and Kansas City, MO – these don’t report victim race. Also omit Tulsa, AL.
+homicide_df = homicide_df %>%
+  filter(!(city_state %in% c("Dallas, TX", "Phoenix, AZ", "Kansas City, MO", "Tulsa, AL")))
+
+# Limit your analysis to those for whom victim_race is white or black. Be sure that victim_age is numeric.
+
+homicide_df = homicide_df %>%
+  filter(victim_race %in% c("White", "Black")) %>%
+  mutate(
+    victim_age = as.numeric(victim_age)
+  )
+
+```
+
+```{r}
+#REGRESSION MODEL
+#For the city of Baltimore, MD, use the glm function to fit a logistic regression with resolved vs unresolved as the outcome and victim age, sex and race as predictors.
+baltimore_df = homicide_df %>%
+  filter(city == "Baltimore")
+
+fit_logistic = 
+  baltimore_df %>% 
+  glm(case_status ~ victim_age + victim_race + victim_sex, data = ., family = binomial()) 
+
+#Save the output of glm as an R object; apply the broom::tidy to this object; and obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing male victims to female victims keeping all other variables fixed.
+
+fit_logistic = fit_logistic %>%
+  broom::tidy(conf.int = TRUE) %>%
+  janitor::clean_names() %>%
+  mutate(
+    OR = exp(estimate),
+    OR_conf_low = exp(conf_low),
+    OR_conf_high = exp(conf_high),
+    CI = str_c(OR_conf_low, ", ",OR_conf_high)) %>%
+  filter(term == "victim_sexMale") %>%
+  select(OR, CI)
+
+
+```
+
+```{r}
+#MAPPING WITH REGRESSION
+#Now run glm for each of the cities in your dataset, and extract the adjusted odds ratio (and CI) for solving homicides comparing male victims to female victims. Do this within a “tidy” pipeline, making use of purrr::map, list columns, and unnest as necessary to create a dataframe with estimated ORs and CIs for each city.
+
+nest_glm_homicide =
+  homicide_df %>% 
+  nest(df = -city_state) %>% 
+  mutate(
+    models = map(df, ~glm(case_status ~ victim_age + victim_sex + victim_race, data = .x, family = binomial())),
+    results = map(models, broom::tidy, conf.int = TRUE)) %>% 
+  select(-df, -models) %>% 
+  unnest(cols = results) %>%
+  janitor::clean_names() %>%
+  mutate(
+    OR = exp(estimate),
+    OR_conf_low = exp(conf_low),
+    OR_conf_high = exp(conf_high),
+    CI = str_c(OR_conf_low, ", ",OR_conf_high)) %>%
+  select(city_state, OR, CI)
+  
+```
+
+```{r}
+# PLOT
+# Create a plot that shows the estimated ORs and CIs for each city. Organize cities according to estimated OR, and comment on the plot.
+
+
+```
+
