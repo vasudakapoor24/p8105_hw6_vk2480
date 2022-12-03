@@ -1,0 +1,16 @@
+---
+title: "p8105_hw6_vk2480"
+author: "Vasuda Kapoor"
+output: github_document
+date: "2022-12-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Library calls
+```{r}
+library(tidyverse)
+```
